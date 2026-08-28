@@ -1,0 +1,8 @@
+CREATE TABLE documents (
+    id BIGSERIAL PRIMARY KEY,
+    file_name VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100),
+    file_size BIGINT,
+    status VARCHAR(30) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
