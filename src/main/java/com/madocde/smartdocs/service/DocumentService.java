@@ -2,28 +2,55 @@ package com.madocde.smartdocs.service;
 
 import com.madocde.smartdocs.dto.DocumentResponse;
 import com.madocde.smartdocs.entity.Document;
+import com.madocde.smartdocs.entity.DocumentChunk;
 import com.madocde.smartdocs.entity.DocumentStatus;
+import com.madocde.smartdocs.repository.DocumentChunkRepository;
 import com.madocde.smartdocs.repository.DocumentRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class DocumentService {
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
     private final DocumentRepository documentRepository;
+    private final PdfTextExtractor pdfTextExtractor;
+    private final TextChunker textChunker;
+    private final DocumentChunkRepository documentChunkRepository;
 
-    public DocumentService(DocumentRepository documentRepository) {
+    public DocumentService(DocumentRepository documentRepository,
+                           PdfTextExtractor pdfTextExtractor,
+                           TextChunker textChunker,
+                           DocumentChunkRepository documentChunkRepository) {
         this.documentRepository = documentRepository;
+        this.pdfTextExtractor = pdfTextExtractor;
+        this.textChunker = textChunker;
+        this.documentChunkRepository = documentChunkRepository;
     }
 
+    @Transactional
     public Document uploadDocument(MultipartFile file)
         throws IOException {
 
         validateFile(file);
+
+        String extractedText = pdfTextExtractor.extractText(file);
+
+        if(extractedText.isBlank()){
+            throw new IllegalArgumentException("PDF does not contain text/data");
+        }
+
+        List<String> chunks = textChunker.chunk(extractedText);
+
+        System.out.println("Extracted characters; " + extractedText.length());
+
+        System.out.println("Generated chunks: " + chunks.size());
 
         Document document = new Document();
 
@@ -33,7 +60,11 @@ public class DocumentService {
         document.setStatus(DocumentStatus.UPLOADED);
         document.setCreatedAt(OffsetDateTime.now());
 
-        return documentRepository.save(document);
+        Document savedDocument = documentRepository.save(document);
+
+        saveChunks(savedDocument, chunks);
+
+        return savedDocument;
     }
 
     private void validateFile(MultipartFile file){
@@ -58,6 +89,23 @@ public class DocumentService {
 //                    "Only PDF files are supported"
 //            );
 //        }
+    }
+
+    private void saveChunks(Document document, List<String> chunks) {
+        List<DocumentChunk> documentChunks = new ArrayList<>();
+
+        for (int i = 0; i < chunks.size(); i++) {
+            DocumentChunk chunk = new DocumentChunk();
+
+            chunk.setDocument(document);
+            chunk.setChunkIndex(i);
+            chunk.setContent(chunks.get(i));
+            chunk.setCreatedAt(OffsetDateTime.now());
+
+            documentChunks.add(chunk);
+        }
+
+        documentChunkRepository.saveAll(documentChunks);
     }
 
     public DocumentResponse toResponse(Document document){

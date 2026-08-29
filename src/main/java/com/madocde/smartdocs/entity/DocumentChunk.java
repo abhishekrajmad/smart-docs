@@ -20,7 +20,7 @@ public class DocumentChunk {
     private Integer chunkIndex;
 
     @Column(nullable = false, columnDefinition = "TEXT")
-    private String Content;
+    private String content;
 
 //    private Object embedding;
 
@@ -54,11 +54,11 @@ public class DocumentChunk {
     }
 
     public String getContent() {
-        return Content;
+        return content;
     }
 
     public void setContent(String content) {
-        Content = content;
+        this.content = content;
     }
 
     public OffsetDateTime getCreatedAt() {
