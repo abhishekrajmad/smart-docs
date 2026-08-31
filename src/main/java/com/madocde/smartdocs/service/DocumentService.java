@@ -23,15 +23,18 @@ public class DocumentService {
     private final PdfTextExtractor pdfTextExtractor;
     private final TextChunker textChunker;
     private final DocumentChunkRepository documentChunkRepository;
+    private final GeminiEmbeddingService geminiEmbeddingService;
 
     public DocumentService(DocumentRepository documentRepository,
                            PdfTextExtractor pdfTextExtractor,
                            TextChunker textChunker,
-                           DocumentChunkRepository documentChunkRepository) {
+                           DocumentChunkRepository documentChunkRepository,
+                           GeminiEmbeddingService geminiEmbeddingService) {
         this.documentRepository = documentRepository;
         this.pdfTextExtractor = pdfTextExtractor;
         this.textChunker = textChunker;
         this.documentChunkRepository = documentChunkRepository;
+        this.geminiEmbeddingService = geminiEmbeddingService;
     }
 
     @Transactional
@@ -47,11 +50,11 @@ public class DocumentService {
         }
 
         List<String> chunks = textChunker.chunk(extractedText);
-
         System.out.println("Extracted characters; " + extractedText.length());
-
         System.out.println("Generated chunks: " + chunks.size());
 
+        List<Float> embedding = geminiEmbeddingService.generateEmbedding(chunks.get(0));
+        System.out.println("Embedding dimensions: " + embedding.size());
         Document document = new Document();
 
         document.setFileName(file.getOriginalFilename());
