@@ -1,6 +1,8 @@
 package com.madocde.smartdocs.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 
@@ -22,7 +24,9 @@ public class DocumentChunk {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-//    private Object embedding;
+    @JdbcTypeCode(SqlTypes.VECTOR)
+    @Column(name = "embedding", columnDefinition = "vector(768)")
+    private float[] embedding;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -59,6 +63,14 @@ public class DocumentChunk {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public float[] getEmbedding() {
+        return embedding;
+    }
+
+    public void setEmbedding(float[] embedding) {
+        this.embedding = embedding;
     }
 
     public OffsetDateTime getCreatedAt() {

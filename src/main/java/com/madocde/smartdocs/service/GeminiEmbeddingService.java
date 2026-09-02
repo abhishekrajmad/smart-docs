@@ -19,7 +19,7 @@ public class GeminiEmbeddingService {
 
     public List<Float> generateEmbedding(String text){
         EmbedContentConfig config = EmbedContentConfig.builder()
-                .outputDimensionality(1536)
+                .outputDimensionality(768)
                 .taskType("RETRIEVAL_DOCUMENT")
                 .build();
 

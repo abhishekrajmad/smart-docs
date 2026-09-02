@@ -65,7 +65,7 @@ public class DocumentService {
 
         Document savedDocument = documentRepository.save(document);
 
-        saveChunks(savedDocument, chunks);
+        saveChunks(savedDocument, chunks, embedding);
 
         return savedDocument;
     }
@@ -86,15 +86,9 @@ public class DocumentService {
         if (fileName == null || !fileName.toLowerCase().endsWith(".pdf")){
             throw new IllegalArgumentException("Only PDF files are supported");
         }
-
-//        if(!"application/pdf".equalsIgnoreCase(file.getContentType())){
-//            throw new IllegalArgumentException(
-//                    "Only PDF files are supported"
-//            );
-//        }
     }
 
-    private void saveChunks(Document document, List<String> chunks) {
+    private void saveChunks(Document document, List<String> chunks, List<Float> embedding) {
         List<DocumentChunk> documentChunks = new ArrayList<>();
 
         for (int i = 0; i < chunks.size(); i++) {
