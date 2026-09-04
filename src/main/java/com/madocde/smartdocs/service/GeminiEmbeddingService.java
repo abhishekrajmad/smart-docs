@@ -5,6 +5,7 @@ import com.google.genai.types.EmbedContentConfig;
 import com.google.genai.types.EmbedContentResponse;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,5 +35,32 @@ public class GeminiEmbeddingService {
                 )
                 .flatMap(embedding -> embedding.values())
                 .orElse(Collections.emptyList());
+    }
+
+    public List<List<Float>> generateEmbeddings(List<String> texts) {
+
+        if(texts == null || texts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        EmbedContentConfig config = EmbedContentConfig.builder()
+                .outputDimensionality(768)
+                .taskType("RETRIEVAL_DOCUMENT")
+                .build();
+
+        EmbedContentResponse response = geminiClient.models.embedContent(
+                "gemini-embedding-001", texts, config);
+
+        List<List<Float>> result = new ArrayList<>();
+
+        response.embeddings().ifPresent(embeddings ->{
+            for (var embedding : embeddings){
+                List<Float> values = embedding.values()
+                        .orElse(Collections.emptyList());
+                result.add(values);
+            }
+        });
+
+        return result;
     }
 }

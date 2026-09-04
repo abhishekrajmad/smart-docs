@@ -2,7 +2,6 @@ package com.madocde.smartdocs.service;
 
 import com.madocde.smartdocs.dto.DocumentResponse;
 import com.madocde.smartdocs.entity.Document;
-import com.madocde.smartdocs.entity.DocumentChunk;
 import com.madocde.smartdocs.entity.DocumentStatus;
 import com.madocde.smartdocs.repository.DocumentChunkRepository;
 import com.madocde.smartdocs.repository.DocumentRepository;
@@ -10,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -22,19 +22,19 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final PdfTextExtractor pdfTextExtractor;
     private final TextChunker textChunker;
-    private final DocumentChunkRepository documentChunkRepository;
     private final GeminiEmbeddingService geminiEmbeddingService;
+    private final DocumentChunkService documentChunkService;
 
     public DocumentService(DocumentRepository documentRepository,
                            PdfTextExtractor pdfTextExtractor,
                            TextChunker textChunker,
                            DocumentChunkRepository documentChunkRepository,
-                           GeminiEmbeddingService geminiEmbeddingService) {
+                           GeminiEmbeddingService geminiEmbeddingService, DocumentChunkService documentChunkService) {
         this.documentRepository = documentRepository;
         this.pdfTextExtractor = pdfTextExtractor;
         this.textChunker = textChunker;
-        this.documentChunkRepository = documentChunkRepository;
         this.geminiEmbeddingService = geminiEmbeddingService;
+        this.documentChunkService = documentChunkService;
     }
 
     @Transactional
@@ -53,8 +53,6 @@ public class DocumentService {
         System.out.println("Extracted characters; " + extractedText.length());
         System.out.println("Generated chunks: " + chunks.size());
 
-        List<Float> embedding = geminiEmbeddingService.generateEmbedding(chunks.get(0));
-        System.out.println("Embedding dimensions: " + embedding.size());
         Document document = new Document();
 
         document.setFileName(file.getOriginalFilename());
@@ -65,7 +63,7 @@ public class DocumentService {
 
         Document savedDocument = documentRepository.save(document);
 
-        saveChunks(savedDocument, chunks, embedding);
+        processChunks(savedDocument, chunks);
 
         return savedDocument;
     }
@@ -88,21 +86,19 @@ public class DocumentService {
         }
     }
 
-    private void saveChunks(Document document, List<String> chunks, List<Float> embedding) {
-        List<DocumentChunk> documentChunks = new ArrayList<>();
+    private void processChunks(Document document, List<String> chunks) {
+        final int batchSize = 20;
 
-        for (int i = 0; i < chunks.size(); i++) {
-            DocumentChunk chunk = new DocumentChunk();
+        for(int start = 0; start < chunks.size(); start += batchSize){
+            int end = Math.min(start + batchSize, chunks.size());
+            List<String> batch =  chunks.subList(start, end);
+            System.out.println("Processing chunks: " + start + " to " + (end-1));
 
-            chunk.setDocument(document);
-            chunk.setChunkIndex(i);
-            chunk.setContent(chunks.get(i));
-            chunk.setCreatedAt(OffsetDateTime.now());
+            List<List<Float>> embeddings = geminiEmbeddingService.generateEmbeddings(batch);
+            System.out.println("Generated Embeddings: " + embeddings.size());
 
-            documentChunks.add(chunk);
+            documentChunkService.saveChunks(document, batch, embeddings, start);
         }
-
-        documentChunkRepository.saveAll(documentChunks);
     }
 
     public DocumentResponse toResponse(Document document){
