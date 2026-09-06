@@ -57,10 +57,50 @@ public class GeminiEmbeddingService {
             for (var embedding : embeddings){
                 List<Float> values = embedding.values()
                         .orElse(Collections.emptyList());
-                result.add(values);
+                result.add(normalize(values));
             }
         });
 
         return result;
+    }
+
+    public List<Float> generateQueryEmbedding(String text){
+        EmbedContentConfig config = EmbedContentConfig.builder()
+                .outputDimensionality(768)
+                .taskType("RETRIEVAL_QUERY")
+                .build();
+
+        EmbedContentResponse response = geminiClient.models.embedContent(
+                "gemini-embedding-001", text, config);
+
+        List<Float> embedding = response.embeddings()
+                .flatMap(embeddings ->
+                        embeddings.isEmpty()
+                                ? java.util.Optional.empty()
+                                : java.util.Optional.of(embeddings.get(0))
+                )
+                .flatMap(contentEmbedding -> contentEmbedding.values())
+                .orElse(Collections.emptyList());
+
+        return normalize(embedding);
+    }
+
+    private List<Float> normalize(List<Float> embedding) {
+        double magnitude = 0.0;
+        for (Float value : embedding) {
+            magnitude += value * value;
+        }
+
+        magnitude =  Math.sqrt(magnitude);
+
+        if(magnitude == 0.0) return embedding;
+
+        List<Float> normalized = new ArrayList<>(embedding.size());
+
+        for (Float value : embedding) {
+            normalized.add((float) (value / magnitude));
+        }
+
+        return normalized;
     }
 }
