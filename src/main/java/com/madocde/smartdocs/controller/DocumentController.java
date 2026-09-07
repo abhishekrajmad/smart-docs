@@ -7,6 +7,8 @@ import com.madocde.smartdocs.entity.Document;
 import com.madocde.smartdocs.entity.DocumentChunk;
 import com.madocde.smartdocs.service.DocumentQueryService;
 import com.madocde.smartdocs.service.DocumentService;
+import com.madocde.smartdocs.service.GeminiAnswerService;
+import com.madocde.smartdocs.service.RagContextService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,10 +22,15 @@ import java.util.List;
 public class DocumentController {
     private final DocumentService documentService;
     private final DocumentQueryService documentQueryService;
+    private final RagContextService ragContextService;
+    private final GeminiAnswerService geminiAnswerService;
 
-    public DocumentController(DocumentService documentService, DocumentQueryService documentQueryService) {
+    public DocumentController(DocumentService documentService, DocumentQueryService documentQueryService
+    , RagContextService ragContextService, GeminiAnswerService geminiAnswerService) {
         this.documentService = documentService;
         this.documentQueryService = documentQueryService;
+        this.ragContextService = ragContextService;
+        this.geminiAnswerService = geminiAnswerService;
     }
 
     @PostMapping
@@ -40,15 +47,15 @@ public class DocumentController {
     }
 
     @PostMapping("/{documentId}/query")
-    public ResponseEntity<List<RetrievedChunkResponse>> queryDocument(
+    public ResponseEntity<?> queryDocument(
             @PathVariable Long documentId,
             @RequestBody DocumentQueryRequest request) {
         List<DocumentChunk> chunks = documentQueryService.search(documentId, request.getQuestion(), 5);
 
-        List<RetrievedChunkResponse> response = chunks.stream()
-                .map(chunk -> new RetrievedChunkResponse(chunk.getChunkIndex(), chunk.getContent()))
-                .toList();
+        String context = ragContextService.buildContext(chunks);
 
-        return ResponseEntity.ok(response);
+        String answer = geminiAnswerService.generateAnswer(request.getQuestion(), context);
+
+        return ResponseEntity.ok(answer);
     }
 }
