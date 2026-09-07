@@ -1,8 +1,8 @@
 package com.madocde.smartdocs.service;
 
-import com.madocde.smartdocs.entity.DocumentChunk;
 import com.madocde.smartdocs.repository.DocumentChunkRepository;
 import com.madocde.smartdocs.repository.DocumentRepository;
+import com.madocde.smartdocs.repository.SimilaritySearchResult;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,7 +22,7 @@ public class DocumentQueryService {
         this.documentRepository = documentRepository;
     }
 
-    public List<DocumentChunk> search(
+    public List<SimilaritySearchResult> search(
             Long documentId, String question, int limit) {
 
         documentRepository.findById(documentId)

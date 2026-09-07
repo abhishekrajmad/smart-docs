@@ -2,9 +2,8 @@ package com.madocde.smartdocs.controller;
 
 import com.madocde.smartdocs.dto.DocumentQueryRequest;
 import com.madocde.smartdocs.dto.DocumentResponse;
-import com.madocde.smartdocs.dto.RetrievedChunkResponse;
 import com.madocde.smartdocs.entity.Document;
-import com.madocde.smartdocs.entity.DocumentChunk;
+import com.madocde.smartdocs.repository.SimilaritySearchResult;
 import com.madocde.smartdocs.service.DocumentQueryService;
 import com.madocde.smartdocs.service.DocumentService;
 import com.madocde.smartdocs.service.GeminiAnswerService;
@@ -14,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -50,7 +48,8 @@ public class DocumentController {
     public ResponseEntity<?> queryDocument(
             @PathVariable Long documentId,
             @RequestBody DocumentQueryRequest request) {
-        List<DocumentChunk> chunks = documentQueryService.search(documentId, request.getQuestion(), 5);
+
+        List<SimilaritySearchResult> chunks = documentQueryService.search(documentId, request.getQuestion(), 10);
 
         String context = ragContextService.buildContext(chunks);
 
