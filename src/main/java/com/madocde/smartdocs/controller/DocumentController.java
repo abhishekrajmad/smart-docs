@@ -49,7 +49,11 @@ public class DocumentController {
             @PathVariable Long documentId,
             @RequestBody DocumentQueryRequest request) {
 
-        List<SimilaritySearchResult> chunks = documentQueryService.search(documentId, request.getQuestion(), 10);
+        List<SimilaritySearchResult> chunks = documentQueryService.search(documentId, request.getQuestion());
+
+        if (chunks.isEmpty()) {
+            return ResponseEntity.ok("I could not find the answer in the document.............");
+        }
 
         String context = ragContextService.buildContext(chunks);
 

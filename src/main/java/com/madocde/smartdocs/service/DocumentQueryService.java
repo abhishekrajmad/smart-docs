@@ -3,12 +3,20 @@ package com.madocde.smartdocs.service;
 import com.madocde.smartdocs.repository.DocumentChunkRepository;
 import com.madocde.smartdocs.repository.DocumentRepository;
 import com.madocde.smartdocs.repository.SimilaritySearchResult;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class DocumentQueryService {
+
+    @Value("${rag.retrieval.top-k}")
+    private int defaultTopK;
+
+    @Value("${rag.retrieval.min-similarity}")
+    private double minSimilarity;
+
     private final GeminiEmbeddingService geminiEmbeddingService;
     private final DocumentChunkRepository documentChunkRepository;
     private final DocumentRepository documentRepository;
@@ -23,7 +31,7 @@ public class DocumentQueryService {
     }
 
     public List<SimilaritySearchResult> search(
-            Long documentId, String question, int limit) {
+            Long documentId, String question) {
 
         documentRepository.findById(documentId)
                 .orElseThrow(() ->
@@ -37,7 +45,19 @@ public class DocumentQueryService {
 
         String queryVector = toVectorString(queryEmbedding);
 
-        return documentChunkRepository.findSimilarChunks(documentId, queryVector, limit);
+//        return documentChunkRepository.findSimilarChunks(documentId, queryVector, defaultTopK);
+        List<SimilaritySearchResult> results =
+                documentChunkRepository.findSimilarChunks(
+                        documentId,
+                        queryVector,
+                        defaultTopK
+                );
+
+        results = results.stream()
+                .filter(result -> result.getSimilarity() >= minSimilarity)
+                .toList();
+
+        return results;
     }
 
     private String toVectorString(List<Float> embedding) {
