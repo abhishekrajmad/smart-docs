@@ -5,6 +5,7 @@ import com.google.genai.types.EmbedContentConfig;
 import com.google.genai.types.EmbedContentResponse;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,5 +35,72 @@ public class GeminiEmbeddingService {
                 )
                 .flatMap(embedding -> embedding.values())
                 .orElse(Collections.emptyList());
+    }
+
+    public List<List<Float>> generateEmbeddings(List<String> texts) {
+
+        if(texts == null || texts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        EmbedContentConfig config = EmbedContentConfig.builder()
+                .outputDimensionality(768)
+                .taskType("RETRIEVAL_DOCUMENT")
+                .build();
+
+        EmbedContentResponse response = geminiClient.models.embedContent(
+                "gemini-embedding-001", texts, config);
+
+        List<List<Float>> result = new ArrayList<>();
+
+        response.embeddings().ifPresent(embeddings ->{
+            for (var embedding : embeddings){
+                List<Float> values = embedding.values()
+                        .orElse(Collections.emptyList());
+                result.add(normalize(values));
+            }
+        });
+
+        return result;
+    }
+
+    public List<Float> generateQueryEmbedding(String text){
+        EmbedContentConfig config = EmbedContentConfig.builder()
+                .outputDimensionality(768)
+                .taskType("RETRIEVAL_QUERY")
+                .build();
+
+        EmbedContentResponse response = geminiClient.models.embedContent(
+                "gemini-embedding-001", text, config);
+
+        List<Float> embedding = response.embeddings()
+                .flatMap(embeddings ->
+                        embeddings.isEmpty()
+                                ? java.util.Optional.empty()
+                                : java.util.Optional.of(embeddings.get(0))
+                )
+                .flatMap(contentEmbedding -> contentEmbedding.values())
+                .orElse(Collections.emptyList());
+
+        return normalize(embedding);
+    }
+
+    private List<Float> normalize(List<Float> embedding) {
+        double magnitude = 0.0;
+        for (Float value : embedding) {
+            magnitude += value * value;
+        }
+
+        magnitude =  Math.sqrt(magnitude);
+
+        if(magnitude == 0.0) return embedding;
+
+        List<Float> normalized = new ArrayList<>(embedding.size());
+
+        for (Float value : embedding) {
+            normalized.add((float) (value / magnitude));
+        }
+
+        return normalized;
     }
 }
