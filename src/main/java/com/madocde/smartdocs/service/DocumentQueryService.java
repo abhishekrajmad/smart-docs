@@ -1,5 +1,6 @@
 package com.madocde.smartdocs.service;
 
+import com.madocde.smartdocs.exception.ResourceNotFoundException;
 import com.madocde.smartdocs.repository.DocumentChunkRepository;
 import com.madocde.smartdocs.repository.DocumentRepository;
 import com.madocde.smartdocs.repository.SimilaritySearchResult;
@@ -35,7 +36,7 @@ public class DocumentQueryService {
 
         documentRepository.findById(documentId)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Document with id: " + documentId + " not found."));
+                        new ResourceNotFoundException("Document with id: " + documentId + " not found."));
 
         if (question == null || question.isBlank()) {
             throw new IllegalArgumentException("Question cannot be empty");

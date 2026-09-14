@@ -3,15 +3,13 @@ package com.madocde.smartdocs.service;
 import com.madocde.smartdocs.dto.DocumentResponse;
 import com.madocde.smartdocs.entity.Document;
 import com.madocde.smartdocs.entity.DocumentStatus;
-import com.madocde.smartdocs.repository.DocumentChunkRepository;
+import com.madocde.smartdocs.exception.DocumentProcessingException;
 import com.madocde.smartdocs.repository.DocumentRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -27,8 +25,8 @@ public class DocumentService {
     public DocumentService(DocumentRepository documentRepository,
                            PdfTextExtractor pdfTextExtractor,
                            TextChunker textChunker,
-                           DocumentChunkRepository documentChunkRepository,
-                           GeminiEmbeddingService geminiEmbeddingService, DocumentChunkService documentChunkService) {
+                           GeminiEmbeddingService geminiEmbeddingService,
+                           DocumentChunkService documentChunkService) {
         this.documentRepository = documentRepository;
         this.pdfTextExtractor = pdfTextExtractor;
         this.textChunker = textChunker;
@@ -36,7 +34,6 @@ public class DocumentService {
         this.documentChunkService = documentChunkService;
     }
 
-    @Transactional
     public Document uploadDocument(MultipartFile file)
         throws IOException {
 
@@ -49,8 +46,8 @@ public class DocumentService {
         }
 
         List<String> chunks = textChunker.chunk(extractedText);
-        System.out.println("Extracted characters; " + extractedText.length());
-        System.out.println("Generated chunks: " + chunks.size());
+//        System.out.println("Extracted characters; " + extractedText.length());
+//        System.out.println("Generated chunks: " + chunks.size());
 
         Document document = new Document();
 
@@ -62,9 +59,22 @@ public class DocumentService {
 
         Document savedDocument = documentRepository.save(document);
 
-        processChunks(savedDocument, chunks);
+        savedDocument.setStatus(DocumentStatus.PROCESSING);
+        documentRepository.save(savedDocument);
 
-        return savedDocument;
+        try {
+            processChunks(savedDocument, chunks);
+
+            savedDocument.setStatus(DocumentStatus.PROCESSED);
+            documentRepository.save(savedDocument);
+
+            return savedDocument;
+        } catch (Exception ex) {
+            savedDocument.setStatus(DocumentStatus.FAILED);
+            documentRepository.save(savedDocument);
+
+            throw new DocumentProcessingException("Failed to process document", ex);
+        }
     }
 
     private void validateFile(MultipartFile file){
@@ -91,10 +101,10 @@ public class DocumentService {
         for(int start = 0; start < chunks.size(); start += batchSize){
             int end = Math.min(start + batchSize, chunks.size());
             List<String> batch =  chunks.subList(start, end);
-            System.out.println("Processing chunks: " + start + " to " + (end-1));
+//            System.out.println("Processing chunks: " + start + " to " + (end-1));
 
             List<List<Float>> embeddings = geminiEmbeddingService.generateEmbeddings(batch);
-            System.out.println("Generated Embeddings: " + embeddings.size());
+//            System.out.println("Generated Embeddings: " + embeddings.size());
 
             documentChunkService.saveChunks(document, batch, embeddings, start);
         }
